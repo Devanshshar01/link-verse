@@ -14,6 +14,10 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         const unsubAnalytics = subscribeToAnalytics(user.uid, (data) => {

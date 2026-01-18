@@ -33,19 +33,25 @@ export default function AppearancePage() {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
         try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.appearance) {
-              setAppearance({
-                themeColor: data.appearance.themeColor || 'indigo',
-                buttonStyle: data.appearance.buttonStyle || 'rounded',
-                profileIcon: data.appearance.profileIcon,
-              });
+          if (db) {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              if (data.appearance) {
+                setAppearance({
+                  themeColor: data.appearance.themeColor || 'indigo',
+                  buttonStyle: data.appearance.buttonStyle || 'rounded',
+                  profileIcon: data.appearance.profileIcon,
+                });
+              }
             }
           }
         } catch (error) {

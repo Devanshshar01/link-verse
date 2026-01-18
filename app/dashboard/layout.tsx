@@ -25,6 +25,10 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   useEffect(() => {
+    if (!auth) {
+      router.push("/login");
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user);

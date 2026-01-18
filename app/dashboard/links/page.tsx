@@ -26,6 +26,7 @@ export default function LinksPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!auth) return;
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUserId(user.uid);

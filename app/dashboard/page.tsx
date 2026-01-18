@@ -60,13 +60,19 @@ export default function DashboardPage() {
   const [showTips, setShowTips] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
         try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            setProfile(userDoc.data() as UserProfile);
+          if (db) {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+              setProfile(userDoc.data() as UserProfile);
+            }
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);

@@ -14,18 +14,21 @@ export default function SettingsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
         setDisplayName(user.displayName || "");
         
         // Fetch user profile from Firestore
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUsername(data.username || "");
-          setBio(data.bio || "");
-          if (data.displayName) setDisplayName(data.displayName);
+        if (db) {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUsername(data.username || "");
+            setBio(data.bio || "");
+            if (data.displayName) setDisplayName(data.displayName);
+          }
         }
       }
     });
@@ -34,7 +37,7 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !db) return;
     
     setLoading(true);
     setMessage({ type: "", text: "" });

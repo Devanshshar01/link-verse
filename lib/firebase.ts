@@ -27,36 +27,47 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };
 
-// Debug: log if config is missing
-if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
-  console.error('Firebase config missing! Check .env.local file and restart dev server');
+// Only initialize Firebase if we have a valid API key
+const hasValidConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+let app: ReturnType<typeof initializeApp> | null = null;
+
+if (hasValidConfig) {
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const auth = hasValidConfig && app ? getAuth(app) : null;
+export const db = hasValidConfig && app ? getFirestore(app) : null;
 export const googleProvider = new GoogleAuthProvider();
 
-export const signUp = (email: string, password: string): Promise<UserCredential> =>
-  createUserWithEmailAndPassword(auth, email, password);
+export const signUp = (email: string, password: string): Promise<UserCredential> => {
+  if (!auth) throw new Error('Firebase not initialized');
+  return createUserWithEmailAndPassword(auth, email, password);
+};
 
-export const signIn = (email: string, password: string): Promise<UserCredential> =>
-  signInWithEmailAndPassword(auth, email, password);
+export const signIn = (email: string, password: string): Promise<UserCredential> => {
+  if (!auth) throw new Error('Firebase not initialized');
+  return signInWithEmailAndPassword(auth, email, password);
+};
 
-export const signOut = (): Promise<void> => firebaseSignOut(auth);
+export const signOut = (): Promise<void> => {
+  if (!auth) throw new Error('Firebase not initialized');
+  return firebaseSignOut(auth);
+};
 
-export const signInWithGoogle = (): Promise<UserCredential> =>
-  signInWithPopup(auth, googleProvider);
+export const signInWithGoogle = (): Promise<UserCredential> => {
+  if (!auth) throw new Error('Firebase not initialized');
+  return signInWithPopup(auth, googleProvider);
+};
 
 // Link Management Types
 export interface Link {
@@ -74,6 +85,7 @@ export const addLink = async (
   userId: string,
   linkData: { title: string; url: string; icon?: string; activeFrom?: number; activeTo?: number }
 ) => {
+  if (!db) throw new Error('Firebase not initialized');
   const linksRef = collection(db, "users", userId, "links");
   
   // Remove undefined fields
@@ -93,6 +105,7 @@ export const updateLink = async (
   linkId: string,
   linkData: { title: string; url: string; icon?: string; activeFrom?: number; activeTo?: number }
 ) => {
+  if (!db) throw new Error('Firebase not initialized');
   const linkRef = doc(db, "users", userId, "links", linkId);
   
   // Remove undefined fields
@@ -105,6 +118,7 @@ export const updateLink = async (
 };
 
 export const deleteLink = async (userId: string, linkId: string) => {
+  if (!db) throw new Error('Firebase not initialized');
   const linkRef = doc(db, "users", userId, "links", linkId);
   return await deleteDoc(linkRef);
 };
@@ -113,6 +127,10 @@ export const subscribeToLinks = (
   userId: string,
   callback: (links: Link[]) => void
 ): Unsubscribe => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return () => {};
+  }
   const linksRef = collection(db, "users", userId, "links");
   const q = query(linksRef, orderBy("createdAt", "desc"));
 
@@ -146,6 +164,7 @@ export const updateAppearance = async (
   userId: string,
   appearance: AppearanceSettings
 ) => {
+  if (!db) throw new Error('Firebase not initialized');
   const userRef = doc(db, "users", userId);
   return await setDoc(userRef, { appearance }, { merge: true });
 };
@@ -154,6 +173,10 @@ export const updateAppearance = async (
 export const getUserByUsername = async (
   username: string
 ): Promise<{ userId: string; profile: UserProfile } | null> => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return null;
+  }
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("username", "==", username));
   const snapshot = await getDocs(q);
@@ -170,6 +193,10 @@ export const getUserByUsername = async (
 };
 
 export const getPublicLinks = async (userId: string): Promise<Link[]> => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return [];
+  }
   const linksRef = collection(db, "users", userId, "links");
   const q = query(linksRef, orderBy("createdAt", "desc"));
   const snapshot = await getDocs(q);
@@ -213,6 +240,10 @@ export interface AnalyticsData {
 
 // Track profile view
 export const trackProfileView = async (userId: string) => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return;
+  }
   const today = new Date().toISOString().split('T')[0];
   const analyticsRef = doc(db, "users", userId, "analytics", "stats");
   
@@ -248,6 +279,10 @@ export const trackProfileView = async (userId: string) => {
 
 // Track link click
 export const trackLinkClick = async (userId: string, linkId: string) => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return;
+  }
   const today = new Date().toISOString().split('T')[0];
   const analyticsRef = doc(db, "users", userId, "analytics", "stats");
   
@@ -283,6 +318,10 @@ export const trackLinkClick = async (userId: string, linkId: string) => {
 
 // Get analytics data
 export const getAnalytics = async (userId: string): Promise<AnalyticsData | null> => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return null;
+  }
   const analyticsRef = doc(db, "users", userId, "analytics", "stats");
   
   try {
@@ -307,6 +346,10 @@ export const subscribeToAnalytics = (
   userId: string,
   callback: (data: AnalyticsData) => void
 ): Unsubscribe => {
+  if (!db) {
+    console.warn('Firebase not initialized');
+    return () => {};
+  }
   const analyticsRef = doc(db, "users", userId, "analytics", "stats");
   
   return onSnapshot(analyticsRef, (doc) => {
