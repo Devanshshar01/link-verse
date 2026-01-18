@@ -17,6 +17,7 @@ import {
   doc,
   getDocs,
   getDoc,
+  setDoc,
   query,
   orderBy,
   onSnapshot,
@@ -124,13 +125,30 @@ export const subscribeToLinks = (
   });
 };
 
+// Appearance Types
+export interface AppearanceSettings {
+  themeColor: 'indigo' | 'pink' | 'green' | 'orange' | 'slate';
+  buttonStyle: 'rounded' | 'pill' | 'square';
+  profileIcon?: string;
+}
+
 // Public Profile Types
 export interface UserProfile {
   username: string;
   displayName?: string;
   bio?: string;
   avatar?: string;
+  appearance?: AppearanceSettings;
 }
+
+// Update Appearance Settings
+export const updateAppearance = async (
+  userId: string,
+  appearance: AppearanceSettings
+) => {
+  const userRef = doc(db, "users", userId);
+  return await setDoc(userRef, { appearance }, { merge: true });
+};
 
 // Public Profile Operations
 export const getUserByUsername = async (
@@ -183,4 +201,124 @@ export const isLinkActive = (link: Link, now: Date = new Date()): boolean => {
   } else {
     return currentHour >= from || currentHour < to;
   }
+};
+
+// Analytics Types
+export interface AnalyticsData {
+  totalViews: number;
+  totalClicks: number;
+  viewHistory: { date: string; count: number }[];
+  clickHistory: { date: string; count: number }[];
+}
+
+// Track profile view
+export const trackProfileView = async (userId: string) => {
+  const today = new Date().toISOString().split('T')[0];
+  const analyticsRef = doc(db, "users", userId, "analytics", "stats");
+  
+  try {
+    const analyticsDoc = await getDoc(analyticsRef);
+    if (analyticsDoc.exists()) {
+      const data = analyticsDoc.data();
+      const viewHistory = data.viewHistory || [];
+      const todayIndex = viewHistory.findIndex((v: any) => v.date === today);
+      
+      if (todayIndex >= 0) {
+        viewHistory[todayIndex].count += 1;
+      } else {
+        viewHistory.push({ date: today, count: 1 });
+      }
+      
+      await setDoc(analyticsRef, {
+        totalViews: (data.totalViews || 0) + 1,
+        viewHistory: viewHistory.slice(-30), // Keep last 30 days
+      }, { merge: true });
+    } else {
+      await setDoc(analyticsRef, {
+        totalViews: 1,
+        totalClicks: 0,
+        viewHistory: [{ date: today, count: 1 }],
+        clickHistory: [],
+      });
+    }
+  } catch (error) {
+    console.error("Error tracking view:", error);
+  }
+};
+
+// Track link click
+export const trackLinkClick = async (userId: string, linkId: string) => {
+  const today = new Date().toISOString().split('T')[0];
+  const analyticsRef = doc(db, "users", userId, "analytics", "stats");
+  
+  try {
+    const analyticsDoc = await getDoc(analyticsRef);
+    if (analyticsDoc.exists()) {
+      const data = analyticsDoc.data();
+      const clickHistory = data.clickHistory || [];
+      const todayIndex = clickHistory.findIndex((c: any) => c.date === today);
+      
+      if (todayIndex >= 0) {
+        clickHistory[todayIndex].count += 1;
+      } else {
+        clickHistory.push({ date: today, count: 1 });
+      }
+      
+      await setDoc(analyticsRef, {
+        totalClicks: (data.totalClicks || 0) + 1,
+        clickHistory: clickHistory.slice(-30),
+      }, { merge: true });
+    } else {
+      await setDoc(analyticsRef, {
+        totalViews: 0,
+        totalClicks: 1,
+        viewHistory: [],
+        clickHistory: [{ date: today, count: 1 }],
+      });
+    }
+  } catch (error) {
+    console.error("Error tracking click:", error);
+  }
+};
+
+// Get analytics data
+export const getAnalytics = async (userId: string): Promise<AnalyticsData | null> => {
+  const analyticsRef = doc(db, "users", userId, "analytics", "stats");
+  
+  try {
+    const analyticsDoc = await getDoc(analyticsRef);
+    if (analyticsDoc.exists()) {
+      return analyticsDoc.data() as AnalyticsData;
+    }
+    return {
+      totalViews: 0,
+      totalClicks: 0,
+      viewHistory: [],
+      clickHistory: [],
+    };
+  } catch (error) {
+    console.error("Error getting analytics:", error);
+    return null;
+  }
+};
+
+// Subscribe to analytics updates
+export const subscribeToAnalytics = (
+  userId: string,
+  callback: (data: AnalyticsData) => void
+): Unsubscribe => {
+  const analyticsRef = doc(db, "users", userId, "analytics", "stats");
+  
+  return onSnapshot(analyticsRef, (doc) => {
+    if (doc.exists()) {
+      callback(doc.data() as AnalyticsData);
+    } else {
+      callback({
+        totalViews: 0,
+        totalClicks: 0,
+        viewHistory: [],
+        clickHistory: [],
+      });
+    }
+  });
 };
