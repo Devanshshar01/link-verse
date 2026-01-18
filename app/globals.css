@@ -5,6 +5,26 @@
     "Helvetica Neue", Arial, sans-serif;
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900 antialiased;
@@ -37,5 +57,13 @@
 
   .glass-card {
     @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  }
+
+  .animate-fade-in {
+    animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }

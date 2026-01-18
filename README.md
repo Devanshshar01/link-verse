@@ -122,6 +122,11 @@ service cloud.firestore {
         allow read: if true;
         allow write: if request.auth != null && request.auth.uid == userId;
       }
+      
+      match /analytics/{analyticId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if true; // Allow public to record views/clicks
+      }
     }
   }
 }
@@ -214,6 +219,36 @@ hmmm/
 
 ---
 
+## � Deploy to Vercel
+
+The easiest way to deploy your Hmmm instance is with [Vercel](https://vercel.com/).
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/hmmm&env=NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,NEXT_PUBLIC_FIREBASE_APP_ID&envDescription=Firebase%20configuration%20values%20from%20your%20Firebase%20Console&envLink=https://console.firebase.google.com/)
+
+### Manual Deployment
+
+1. Push your code to GitHub
+2. Go to [vercel.com/new](https://vercel.com/new)
+3. Import your repository
+4. Add environment variables from `.env.example`
+5. Click **Deploy**
+
+### Environment Variables on Vercel
+
+Add these in your Vercel project settings → Environment Variables:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase API Key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase Project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | *(Optional)* Analytics ID |
+
+---
+
 ## 🗺️ Roadmap
 
 - [x] User authentication
@@ -221,8 +256,9 @@ hmmm/
 - [x] Smart scheduling
 - [x] Public profiles
 - [x] Premium UI redesign
-- [ ] Analytics dashboard
-- [ ] Link click tracking
+- [x] Analytics dashboard
+- [x] Link click tracking
+- [x] Profile view tracking
 - [ ] Custom domains
 - [ ] Link expiration
 - [ ] QR code generation
